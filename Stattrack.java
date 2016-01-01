@@ -1,10 +1,13 @@
 package me.koenn.ltp;
 
+import me.koenn.LTPSA.API.DataInput;
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.plugin.Plugin;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,12 +17,20 @@ import static org.bukkit.ChatColor.translateAlternateColorCodes;
 public class Stattrack {
 
     private Main main;
+    private Plugin pl;
 
-    public Stattrack(Main main){
+    public Stattrack(Main main, Plugin pl){
         this.main = main;
+        this.pl = pl;
     }
 
+    @SuppressWarnings("deprecation")
     public void apply(Player p){
+        if(main.tokens.get(p.getUniqueId()) < 1){
+            main.sendMessage("You do not have enough tokens to do this!", p);
+            return;
+        }
+        //Bukkit.getScheduler().scheduleAsyncDelayedTask(pl, () -> Main.addTokens(p.getUniqueId().toString(), -1), 1);
         ItemStack i = p.getItemInHand();
         String type = i.getType().toString();
         if(type.contains("SWORD")){
@@ -31,17 +42,31 @@ public class Stattrack {
                     }
                 }
             }
+            Integer tokens = main.tokens.get(p.getUniqueId());
+            main.tokens.put(p.getUniqueId(), (tokens - 1));
+            DataInput di = new DataInput("losttimepark", "tokens");
+            List<String> collumns = new ArrayList<>();
+            collumns.add("uuid");
+            collumns.add("tokens");
+            List<String> values = new ArrayList<>();
+            values.add(p.getUniqueId().toString());
+            values.add(String.valueOf(1));
+            di.sendDataInput(pl, values, collumns, "uuid");
+            main.sendMessage("1 token(s) got removed from your account!", p);
+            main.sendMessage("Stattrack applied!", p);
+            main.log("Player " + p.getName() + " applied stattrack");
             ItemMeta im = i.getItemMeta();
-            List<String> l = new ArrayList<>();
+            List<String> l;
             if(im.hasLore()){
                 l = im.getLore();
+                l.set(l.size()-1, translateAlternateColorCodes('&', "&bKills: 0"));
+            } else {
+                main.sendMessage("Invalid tool, please report to a staff member.", p);
+                return;
             }
-            l.add(translateAlternateColorCodes('&', "&5Kills: 0"));
             im.setLore(l);
             i.setItemMeta(im);
             p.setItemInHand(i);
-            main.sendMessage("Stattrack applied!", p);
-            main.log("Player " + p.getName() + " applied stattrack");
             rename(p);
         }
     }
@@ -53,7 +78,7 @@ public class Stattrack {
             if(event.getSlot() == AnvilGUI.AnvilSlot.OUTPUT){
                 event.setWillClose(true);
                 event.setWillDestroy(true);
-                String suffix = translateAlternateColorCodes('&', "&d&l > Stat Track <");
+                String suffix = translateAlternateColorCodes('&', "&d&l> Stat Track <");
                 ItemMeta im = weapon.getItemMeta();
                 im.setDisplayName(ChatColor.GOLD + event.getName() + ChatColor.DARK_GRAY + " - " + suffix);
                 weapon.setItemMeta(im);
@@ -65,7 +90,8 @@ public class Stattrack {
                 event.setWillDestroy(false);
             }
         });
-        gui.setSlot(AnvilGUI.AnvilSlot.INPUT_LEFT, p.getItemInHand());
+        gui.setSlot(AnvilGUI.AnvilSlot.INPUT_LEFT, weapon);
+        gui.setSlot(AnvilGUI.AnvilSlot.OUTPUT, weapon);
         p.setItemInHand(new ItemStack(Material.AIR));
         gui.open();
         main.sendMessage("Please rename your weapon", p);
@@ -83,8 +109,8 @@ public class Stattrack {
             }
         }
         List<String> l = im.getLore();
-        l.remove(translateAlternateColorCodes('&', "&5Kills: " + (amount - 1)));
-        l.add(translateAlternateColorCodes('&', "&5Kills: " + amount));
+        l.remove(translateAlternateColorCodes('&', "&bKills: " + (amount - 1)));
+        l.add(translateAlternateColorCodes('&', "&bKills: " + amount));
         im.setLore(l);
         i.setItemMeta(im);
         p.setItemInHand(i);

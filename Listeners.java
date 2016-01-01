@@ -1,15 +1,16 @@
 package me.koenn.ltp;
 
+import com.connorlinfoot.actionbarapi.ActionBarAPI;
+import me.koenn.LTPFL.LTPFactionLevels;
+import mkremins.fanciful.FancyMessage;
 import org.bukkit.Bukkit;
+import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.plugin.Plugin;
-
-import java.sql.PreparedStatement;
 
 public class Listeners implements Listener{
 
@@ -19,13 +20,37 @@ public class Listeners implements Listener{
 
     @EventHandler
     public void onKill(PlayerDeathEvent e){
-        Player p = e.getEntity().getKiller();
-        if(p.getItemInHand().hasItemMeta()){
-            if(p.getItemInHand().getItemMeta().getDisplayName().contains("? Stat Track ?")){
-                if(p.getItemInHand().getItemMeta().hasLore()){
-                    st.addKill(p);
+        try{
+            Player p = e.getEntity().getKiller();
+            LTPFactionLevels.getInstance().addLevels(p.getUniqueId(), 3.0);
+            String weapon = e.getEntity().getKiller().getItemInHand().getItemMeta().getDisplayName();
+            if(weapon == null){
+                weapon = e.getEntity().getKiller().getItemInHand().getType().toString().toLowerCase();
+            }
+            String name = weapon;
+            if(!e.getEntity().getKiller().getItemInHand().getItemMeta().hasDisplayName()){
+                String rawName = weapon.replaceAll("_", " ").toLowerCase();
+                String[] arr = rawName.split(" ");
+                StringBuilder sb = new StringBuilder();
+                for (String anArr : arr) {
+                    sb.append(Character.toUpperCase(anArr.charAt(0))).append(anArr.substring(1)).append(" ");
+                }
+                name = sb.toString().trim();
+            }
+            for(Player x : Bukkit.getOnlinePlayers()){
+                new FancyMessage(ChatColor.BLUE + "Slayer > " + ChatColor.GRAY + e.getEntity().getName() + " was slain by " + p.getName() + " using [" + ChatColor.WHITE + name + ChatColor.GRAY + "]")
+                        .itemTooltip(e.getEntity().getKiller().getItemInHand()).send(x);
+            }
+            if(p.getItemInHand().hasItemMeta()){
+                if(p.getItemInHand().getItemMeta().getDisplayName().contains("> Stat Track <")){
+                    if(p.getItemInHand().getItemMeta().hasLore()){
+                        ActionBarAPI.sendActionBar(p, ChatColor.GREEN + "" + ChatColor.BOLD + "+1 kill");
+                        st.addKill(p);
+                    }
                 }
             }
+        } catch (Exception ex){
+            Bukkit.broadcastMessage(ChatColor.BLUE + "Slayer > " + ChatColor.WHITE + e.getDeathMessage());
         }
     }
 
@@ -42,7 +67,7 @@ public class Listeners implements Listener{
 
     public Listeners(Main main, Plugin pl){
         this.main = main;
-        this.st = new Stattrack(main);
+        this.st = new Stattrack(main, pl);
         this.pl = pl;
     }
 
